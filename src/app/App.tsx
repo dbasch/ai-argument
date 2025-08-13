@@ -24,8 +24,10 @@ import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
 import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
+import { languagePracticeScenario } from "@/app/agentConfigs/languagePractice";
 import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
+import { languagePracticeCompanyName, roleDescriptions } from "@/app/agentConfigs/languagePractice";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 
 // Map used by connect logic for scenarios defined via the SDK.
@@ -33,6 +35,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
+  languagePractice: languagePracticeScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -66,6 +69,8 @@ function App() {
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
     RealtimeAgent[] | null
   >(null);
+  const [selectedRole, setSelectedRole] = useState<string>("restaurant");
+  const [randomScenario, setRandomScenario] = useState<any>(null);
 
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
@@ -157,6 +162,13 @@ function App() {
   }, [selectedAgentName]);
 
   useEffect(() => {
+    // Generate random scenario when random roleplay is first selected
+    if (selectedRole === 'randomRoleplay' && !randomScenario) {
+      generateRandomScenario();
+    }
+  }, [selectedRole]);
+
+  useEffect(() => {
     if (
       sessionStatus === "CONNECTED" &&
       selectedAgentConfigSet &&
@@ -214,7 +226,9 @@ function App() {
 
         const companyName = agentSetKey === 'customerServiceRetail'
           ? customerServiceRetailCompanyName
-          : chatSupervisorCompanyName;
+          : agentSetKey === 'chatSupervisor'
+          ? chatSupervisorCompanyName
+          : languagePracticeCompanyName;
         const guardrail = createModerationGuardrail(companyName);
 
         await connect({
@@ -277,9 +291,9 @@ function App() {
       },
     });
 
-    // Send an initial 'hi' message to trigger the agent to greet the user
+    // Send an initial greeting message to trigger the agent to greet the user
     if (shouldTriggerResponse) {
-      sendSimulatedUserMessage('hi');
+      sendSimulatedUserMessage('Bonjour');
     }
     return;
   }
@@ -341,6 +355,65 @@ function App() {
     disconnectFromRealtime();
     setSelectedAgentName(newAgentName);
     // connectToRealtime will be triggered by effect watching selectedAgentName
+  };
+
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newRole = e.target.value;
+    setSelectedRole(newRole);
+    
+    // If random roleplay is selected, generate a new random scenario
+    if (newRole === 'randomRoleplay') {
+      generateRandomScenario();
+    } else {
+      setRandomScenario(null);
+    }
+  };
+
+  const generateRandomScenario = () => {
+    const scenarioTypes = ['family', 'business', 'social', 'creative'];
+    const randomType = scenarioTypes[Math.floor(Math.random() * scenarioTypes.length)];
+    
+    const scenarios = {
+      family: [
+        "Parent trying to convince teenager to stay in school",
+        "Sibling trying to convince brother to share his new toy",
+        "Child trying to convince parent to get a pet",
+        "Teenager trying to convince parent to let them go to a party"
+      ],
+      business: [
+        "Entrepreneur pitching startup to skeptical VC",
+        "Employee asking boss for a significant raise",
+        "Salesperson trying to sell expensive product to reluctant customer",
+        "Freelancer negotiating higher rates with client"
+      ],
+      social: [
+        "Activist trying to convince neighbor to support environmental cause",
+        "Teacher trying to convince parent to help with homework",
+        "Community organizer trying to get volunteers for project",
+        "Friend trying to convince friend to apologize to someone"
+      ],
+      creative: [
+        "Artist trying to convince gallery owner to exhibit their work",
+        "Writer trying to convince publisher to accept their manuscript",
+        "Musician trying to convince venue owner to book their band",
+        "Designer trying to convince client to approve their concept"
+      ]
+    };
+    
+    const typeScenarios = scenarios[randomType as keyof typeof scenarios];
+    const selectedScenario = typeScenarios[Math.floor(Math.random() * typeScenarios.length)];
+    
+    setRandomScenario({
+      type: randomType,
+      scenario: selectedScenario,
+      userGoal: `Convince the AI agent to agree to your request in the scenario: ${selectedScenario}`,
+      tips: [
+        "Use logical arguments and evidence",
+        "Address their concerns directly", 
+        "Show empathy for their perspective",
+        "Be persistent but respectful"
+      ]
+    });
   };
 
   // Because we need a new connection, refresh the page when codec changes
@@ -449,7 +522,7 @@ function App() {
             />
           </div>
           <div>
-            Realtime API <span className="text-gray-500">Agents</span>
+            Language Practice <span className="text-gray-500">with AI Agents</span>
           </div>
         </div>
         <div className="flex items-center">
@@ -512,19 +585,97 @@ function App() {
               </div>
             </div>
           )}
+
+          {agentSetKey === 'languagePractice' && (
+            <div className="flex items-center ml-6">
+              <label className="flex items-center text-base gap-1 mr-2 font-medium">
+                Role
+              </label>
+              <div className="relative inline-block">
+                <select
+                  value={selectedRole}
+                  onChange={handleRoleChange}
+                  className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
+                >
+                  {Object.entries(roleDescriptions).map(([key, role]) => (
+                    <option key={key} value={key}>
+                      {role.title}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-600">
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 10.44l3.71-3.21a.75.75 0 111.04 1.08l-4.25 3.65a.75.75 0 01-1.04 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
-        <Transcript
-          userText={userText}
-          setUserText={setUserText}
-          onSendMessage={handleSendTextMessage}
-          downloadRecording={downloadRecording}
-          canSend={
-            sessionStatus === "CONNECTED"
-          }
-        />
+        <div className="flex flex-col flex-1 gap-2">
+          {agentSetKey === 'languagePractice' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-2">
+              <h3 className="font-semibold text-blue-900 mb-2">
+                {roleDescriptions[selectedRole as keyof typeof roleDescriptions]?.title}
+              </h3>
+              <p className="text-blue-800 text-sm mb-2">
+                <strong>Your role:</strong> {roleDescriptions[selectedRole as keyof typeof roleDescriptions]?.userRole}
+              </p>
+              <p className="text-blue-800 text-sm mb-2">
+                <strong>AI Agent role:</strong> {roleDescriptions[selectedRole as keyof typeof roleDescriptions]?.agentRole}
+              </p>
+              {selectedRole === 'randomRoleplay' && randomScenario ? (
+                <>
+                  <p className="text-blue-800 text-sm mb-2">
+                    <strong>Random Scenario:</strong> {randomScenario.scenario}
+                  </p>
+                  <p className="text-blue-800 text-sm mb-2">
+                    <strong>Your Goal:</strong> {randomScenario.userGoal}
+                  </p>
+                  <div className="mt-3 p-3 bg-blue-100 rounded-lg">
+                    <p className="text-blue-900 text-sm font-semibold mb-2">💡 Tips for Success:</p>
+                    <ul className="text-blue-800 text-sm space-y-1">
+                      {randomScenario.tips.map((tip: string, index: number) => (
+                        <li key={index}>• {tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <button
+                    onClick={generateRandomScenario}
+                    className="mt-3 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                  >
+                    🎲 Generate New Scenario
+                  </button>
+                </>
+              ) : (
+                <p className="text-blue-800 text-sm">
+                  <strong>Scenario:</strong> {roleDescriptions[selectedRole as keyof typeof roleDescriptions]?.scenario}
+                </p>
+              )}
+            </div>
+          )}
+          
+          <Transcript
+            userText={userText}
+            setUserText={setUserText}
+            onSendMessage={handleSendTextMessage}
+            downloadRecording={downloadRecording}
+            canSend={
+              sessionStatus === "CONNECTED"
+            }
+          />
+        </div>
 
         <Events isExpanded={isEventsPaneExpanded} />
       </div>

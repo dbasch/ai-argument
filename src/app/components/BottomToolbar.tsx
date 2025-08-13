@@ -81,7 +81,7 @@ function BottomToolbar({
           htmlFor="push-to-talk"
           className="flex items-center cursor-pointer"
         >
-          Push to talk
+          Push to speak
         </label>
         <button
           onMouseDown={handleTalkButtonDown}
@@ -95,7 +95,7 @@ function BottomToolbar({
             (!isPTTActive ? " bg-gray-100 text-gray-400" : "")
           }
         >
-          Talk
+          Speak
         </button>
       </div>
 
