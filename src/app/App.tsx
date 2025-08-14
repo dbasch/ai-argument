@@ -108,6 +108,19 @@ function App() {
     },
   );
 
+  // Language selector state
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('French');
+  const [isClient, setIsClient] = useState(false);
+
+  // Initialize language from localStorage after client-side hydration
+  useEffect(() => {
+    setIsClient(true);
+    const stored = localStorage.getItem('selectedLanguage');
+    if (stored) {
+      setSelectedLanguage(stored);
+    }
+  }, []);
+
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
     useAudioDownload();
@@ -384,7 +397,7 @@ function App() {
     try {
       // Update the agent configuration with the new scenario
       const { createRandomRoleplayAgent } = await import('./agentConfigs/languagePractice/randomRoleplay');
-      const newAgent = createRandomRoleplayAgent(scenario);
+      const newAgent = createRandomRoleplayAgent(scenario, selectedLanguage);
       
       console.log('Created new agent with scenario:', scenario);
       console.log('New agent created successfully');
@@ -427,6 +440,55 @@ function App() {
     const url = new URL(window.location.toString());
     url.searchParams.set("codec", newCodec);
     window.location.replace(url.toString());
+  };
+
+  const handleLanguageChange = (newLanguage: string) => {
+    console.log('Language changed to:', newLanguage);
+    setSelectedLanguage(newLanguage);
+    localStorage.setItem('selectedLanguage', newLanguage);
+    
+    // Update the agent with the new language if we have a current scenario
+    if (randomScenario && randomScenario.scenario) {
+      updateAgentLanguage(newLanguage, randomScenario.scenario);
+    }
+  };
+
+  // Update just the agent's language without full refresh
+  const updateAgentLanguage = async (newLanguage: string, scenario: string) => {
+    console.log('Updating agent language to:', newLanguage, 'for scenario:', scenario);
+    
+    try {
+      // Update the agent configuration with the new language
+      const { createRandomRoleplayAgent } = await import('./agentConfigs/languagePractice/randomRoleplay');
+      const newAgent = createRandomRoleplayAgent(scenario, newLanguage);
+      
+      console.log('Created new agent with language:', newLanguage);
+      
+      // Update the scenario map with the new agent
+      setSdkScenarioMap(prev => {
+        const newMap = {
+          ...prev,
+          languagePractice: [newAgent]
+        };
+        console.log('Updated scenario map with new language:', newMap);
+        return newMap;
+      });
+      
+      // If already connected, disconnect and reconnect to use the new agent
+      if (sessionStatus === "CONNECTED") {
+        console.log('Disconnecting to refresh agent with new language...');
+        disconnectFromRealtime();
+        // Small delay to ensure clean disconnection
+        setTimeout(() => {
+          console.log('Reconnecting with new agent language...');
+          connectToRealtime();
+        }, 100);
+      } else {
+        console.log('Not connected yet, new agent language will be used on next connection');
+      }
+    } catch (error) {
+      console.error('Failed to update agent language:', error);
+    }
   };
 
   useEffect(() => {
@@ -524,7 +586,25 @@ function App() {
             Language Practice <span className="text-gray-500">with AI Agents</span>
           </div>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center gap-4">
+          {/* Language Selector */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 font-medium">
+              Language:
+            </label>
+            <select
+              value={selectedLanguage}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="French">🇫🇷 French</option>
+              <option value="Spanish">🇪🇸 Spanish</option>
+              <option value="Italian">🇮🇹 Italian</option>
+              <option value="English">🇺🇸 English</option>
+              <option value="Chinese">🇨🇳 Chinese</option>
+            </select>
+          </div>
+          
           <div className="text-sm text-gray-600">
             Random Roleplay Language Practice
           </div>
@@ -534,9 +614,32 @@ function App() {
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
         <div className="flex flex-col flex-1 gap-2">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-2">
-            <h3 className="font-semibold text-blue-900 mb-2">
-              🎭 Random Roleplay Language Practice
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-blue-900">
+                🎭 Random Roleplay Language Practice
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-blue-700 font-medium">
+                  Practice Language:
+                </span>
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm font-semibold rounded-lg">
+                  {isClient && selectedLanguage === 'French' && '🇫🇷 Français'}
+                  {isClient && selectedLanguage === 'Spanish' && '🇪🇸 Español'}
+                  {isClient && selectedLanguage === 'Italian' && '🇮🇹 Italiano'}
+                  {isClient && selectedLanguage === 'English' && '🇺🇸 English'}
+                  {isClient && selectedLanguage === 'Chinese' && '🇨🇳 中文'}
+                  {!isClient && '🇫🇷 Français'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Language Instructions */}
+            <div className="mb-4 p-3 bg-blue-100 rounded-lg">
+              <p className="text-blue-800 text-sm">
+                <strong>💡 Language Practice Tip:</strong> The AI agent will respond in the language you speak to it. 
+                Set your preferred language above, then speak in that language during the roleplay!
+              </p>
+            </div>
             
             {/* Custom Scenario Input */}
             <div className="mb-4">
@@ -595,6 +698,9 @@ function App() {
                   </ul>
                 </div>
                 <div className="flex gap-2 mt-3">
+                  <p className="text-blue-700 text-xs self-center">
+                    💬 Speak in <strong>{isClient ? selectedLanguage : 'French'}</strong> during the roleplay!
+                  </p>
                   <button
                     onClick={generateRandomScenario}
                     className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
@@ -618,6 +724,9 @@ function App() {
               <div className="text-center py-4">
                 <p className="text-blue-800 text-sm mb-3">
                   Click &quot;Generate Random Scenario&quot; to start, or describe your own scenario above.
+                </p>
+                <p className="text-blue-700 text-xs mb-3">
+                  💬 Remember: Speak in <strong>{isClient ? selectedLanguage : 'French'}</strong> during the roleplay!
                 </p>
                 <button
                   onClick={generateRandomScenario}

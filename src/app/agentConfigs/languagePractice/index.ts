@@ -1,7 +1,7 @@
 import { createRandomRoleplayAgent } from './randomRoleplay';
 
 // Default agent for initial connection
-export const defaultRandomRoleplayAgent = createRandomRoleplayAgent("Waiting for scenario to be generated...");
+export const defaultRandomRoleplayAgent = createRandomRoleplayAgent("Waiting for scenario to be generated...", "French");
 
 export const languagePracticeScenario = [
   defaultRandomRoleplayAgent,

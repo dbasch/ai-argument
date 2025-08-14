@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+// Default export for Next.js 15 compatibility
+export default async function handler(req: NextRequest) {
+  if (req.method === 'POST') {
+    return await POST(req);
+  }
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+}
+
 // Proxy endpoint for the OpenAI Responses API
 export async function POST(req: NextRequest) {
   const body = await req.json();

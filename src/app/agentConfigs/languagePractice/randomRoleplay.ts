@@ -1,7 +1,7 @@
 import { RealtimeAgent } from '@openai/agents/realtime';
 
-// Function to create agent with current scenario
-export const createRandomRoleplayAgent = (currentScenario: string) => new RealtimeAgent({
+// Function to create agent with current scenario and language
+export const createRandomRoleplayAgent = (currentScenario: string, language: string = 'French') => new RealtimeAgent({
   name: 'randomRoleplay',
   voice: 'sage',
   handoffDescription: 'A dynamic roleplay agent that creates random scenarios where you need to be persuasive and convincing.',
@@ -9,6 +9,17 @@ export const createRandomRoleplayAgent = (currentScenario: string) => new Realti
   instructions: `
 # CRITICAL: READ THIS FIRST
 You are roleplaying the following scenario: **${currentScenario}**
+
+# LANGUAGE INSTRUCTION
+**IMPORTANT:** The user has selected ${language} as their practice language. 
+You should respond in ${language} when the user speaks to you in ${language}.
+If the user speaks in ${language}, respond in ${language}.
+If the user speaks in English, respond in English.
+If the user speaks in Spanish, respond in Spanish.
+If the user speaks in Italian, respond in Italian.
+If the user speaks in Chinese, respond in Chinese.
+
+**PRACTICE LANGUAGE:** ${language}
 
 You must stay in character as the person described in this scenario. The user is trying to convince you of something related to this scenario.
 
