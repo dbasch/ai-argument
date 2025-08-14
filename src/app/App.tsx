@@ -21,7 +21,7 @@ import { useRealtimeSession } from "./hooks/useRealtimeSession";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
 // Agent configs
-import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
+import { allAgentSets } from "@/app/agentConfigs";
 import { languagePracticeScenario } from "@/app/agentConfigs/languagePractice";
 import { languagePracticeCompanyName } from "@/app/agentConfigs/languagePractice";
 
@@ -62,7 +62,7 @@ function App() {
 
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
-  const handoffTriggeredRef = useRef(false);
+  // const handoffTriggeredRef = useRef(false);
 
   const sdkAudioElement = React.useMemo(() => {
     if (typeof window === 'undefined') return undefined;
@@ -127,7 +127,7 @@ function App() {
     // Always use languagePractice scenario
     const finalAgentConfig = 'languagePractice';
     const agents = allAgentSets[finalAgentConfig];
-    const agentKeyToUse = agents[0]?.name || "";
+    // const agentKeyToUse = agents[0]?.name || "";
     
     // Update URL if needed
     const url = new URL(window.location.toString());
