@@ -95,6 +95,7 @@ function App() {
     useState<SessionStatus>("DISCONNECTED");
 
   const [sdkScenarioMap, setSdkScenarioMap] = useState(defaultSdkScenarioMap);
+  const [agentReady, setAgentReady] = useState(false);
 
   const [userText, setUserText] = useState<string>("");
   const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
@@ -138,11 +139,11 @@ function App() {
   }, [searchParams]);
 
   useEffect(() => {
-    // Always connect when disconnected
-    if (sessionStatus === "DISCONNECTED") {
+    // Only connect when disconnected AND agent is ready
+    if (sessionStatus === "DISCONNECTED" && agentReady) {
       connectToRealtime();
     }
-  }, [sessionStatus]);
+  }, [sessionStatus, agentReady]);
 
   useEffect(() => {
     // Generate random scenario on first load
@@ -398,6 +399,10 @@ function App() {
         console.log('Updated scenario map:', newMap);
         return newMap;
       });
+      
+      // Mark agent as ready for connection
+      setAgentReady(true);
+      console.log('Agent is now ready with scenario:', scenario);
       
       // If already connected, refresh the connection to use the new agent
       if (sessionStatus === "CONNECTED") {
