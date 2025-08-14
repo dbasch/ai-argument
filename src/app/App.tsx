@@ -22,19 +22,11 @@ import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
-import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServiceRetail";
-import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
 import { languagePracticeScenario } from "@/app/agentConfigs/languagePractice";
-import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerServiceRetail";
-import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
-import { languagePracticeCompanyName, roleDescriptions } from "@/app/agentConfigs/languagePractice";
-import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
+import { languagePracticeCompanyName } from "@/app/agentConfigs/languagePractice";
 
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
-  simpleHandoff: simpleHandoffScenario,
-  customerServiceRetail: customerServiceRetailScenario,
-  chatSupervisor: chatSupervisorScenario,
   languagePractice: languagePracticeScenario,
 };
 
@@ -65,12 +57,8 @@ function App() {
   } = useTranscript();
   const { logClientEvent, logServerEvent } = useEvent();
 
-  const [selectedAgentName, setSelectedAgentName] = useState<string>("");
-  const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
-    RealtimeAgent[] | null
-  >(null);
-  const [selectedRole, setSelectedRole] = useState<string>("restaurant");
   const [randomScenario, setRandomScenario] = useState<any>(null);
+  const [customScenario, setCustomScenario] = useState<string>("");
 
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
@@ -101,10 +89,6 @@ function App() {
     mute,
   } = useRealtimeSession({
     onConnectionChange: (s) => setSessionStatus(s as SessionStatus),
-    onAgentHandoff: (agentName: string) => {
-      handoffTriggeredRef.current = true;
-      setSelectedAgentName(agentName);
-    },
   });
 
   const [sessionStatus, setSessionStatus] =
@@ -139,50 +123,40 @@ function App() {
   useHandleSessionHistory();
 
   useEffect(() => {
-    let finalAgentConfig = searchParams.get("agentConfig");
-    if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
-      finalAgentConfig = defaultAgentSetKey;
-      const url = new URL(window.location.toString());
+    // Always use languagePractice scenario
+    const finalAgentConfig = 'languagePractice';
+    const agents = allAgentSets[finalAgentConfig];
+    const agentKeyToUse = agents[0]?.name || "";
+    
+    // Update URL if needed
+    const url = new URL(window.location.toString());
+    if (url.searchParams.get("agentConfig") !== finalAgentConfig) {
       url.searchParams.set("agentConfig", finalAgentConfig);
       window.location.replace(url.toString());
       return;
     }
-
-    const agents = allAgentSets[finalAgentConfig];
-    const agentKeyToUse = agents[0]?.name || "";
-
-    setSelectedAgentName(agentKeyToUse);
-    setSelectedAgentConfigSet(agents);
   }, [searchParams]);
 
   useEffect(() => {
-    if (selectedAgentName && sessionStatus === "DISCONNECTED") {
+    // Always connect when disconnected
+    if (sessionStatus === "DISCONNECTED") {
       connectToRealtime();
     }
-  }, [selectedAgentName]);
+  }, [sessionStatus]);
 
   useEffect(() => {
-    // Generate random scenario when random roleplay is first selected
-    if (selectedRole === 'randomRoleplay' && !randomScenario) {
+    // Generate random scenario on first load
+    if (!randomScenario) {
       generateRandomScenario();
     }
-  }, [selectedRole]);
+  }, []);
 
   useEffect(() => {
-    if (
-      sessionStatus === "CONNECTED" &&
-      selectedAgentConfigSet &&
-      selectedAgentName
-    ) {
-      const currentAgent = selectedAgentConfigSet.find(
-        (a) => a.name === selectedAgentName
-      );
-      addTranscriptBreadcrumb(`Agent: ${selectedAgentName}`, currentAgent);
-      updateSession(!handoffTriggeredRef.current);
-      // Reset flag after handling so subsequent effects behave normally
-      handoffTriggeredRef.current = false;
+    if (sessionStatus === "CONNECTED") {
+      addTranscriptBreadcrumb(`Agent: Random Roleplay`, undefined);
+      updateSession(true);
     }
-  }, [selectedAgentConfigSet, selectedAgentName, sessionStatus]);
+  }, [sessionStatus]);
 
   useEffect(() => {
     if (sessionStatus === "CONNECTED") {
@@ -216,24 +190,15 @@ function App() {
         const EPHEMERAL_KEY = await fetchEphemeralKey();
         if (!EPHEMERAL_KEY) return;
 
-        // Ensure the selectedAgentName is first so that it becomes the root
-        const reorderedAgents = [...sdkScenarioMap[agentSetKey]];
-        const idx = reorderedAgents.findIndex((a) => a.name === selectedAgentName);
-        if (idx > 0) {
-          const [agent] = reorderedAgents.splice(idx, 1);
-          reorderedAgents.unshift(agent);
-        }
+        // Use the language practice agents directly
+        const agents = sdkScenarioMap[agentSetKey];
 
-        const companyName = agentSetKey === 'customerServiceRetail'
-          ? customerServiceRetailCompanyName
-          : agentSetKey === 'chatSupervisor'
-          ? chatSupervisorCompanyName
-          : languagePracticeCompanyName;
+        const companyName = languagePracticeCompanyName;
         const guardrail = createModerationGuardrail(companyName);
 
         await connect({
           getEphemeralKey: async () => EPHEMERAL_KEY,
-          initialAgents: reorderedAgents,
+          initialAgents: agents,
           audioElement: sdkAudioElement,
           outputGuardrails: [guardrail],
           extraContext: {
@@ -346,28 +311,7 @@ function App() {
     window.location.replace(url.toString());
   };
 
-  const handleSelectedAgentChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const newAgentName = e.target.value;
-    // Reconnect session with the newly selected agent as root so that tool
-    // execution works correctly.
-    disconnectFromRealtime();
-    setSelectedAgentName(newAgentName);
-    // connectToRealtime will be triggered by effect watching selectedAgentName
-  };
 
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newRole = e.target.value;
-    setSelectedRole(newRole);
-    
-    // If random roleplay is selected, generate a new random scenario
-    if (newRole === 'randomRoleplay') {
-      generateRandomScenario();
-    } else {
-      setRandomScenario(null);
-    }
-  };
 
   const generateRandomScenario = () => {
     const scenarioTypes = ['family', 'business', 'social', 'creative'];
@@ -526,48 +470,23 @@ function App() {
           </div>
         </div>
         <div className="flex items-center">
-          <label className="flex items-center text-base gap-1 mr-2 font-medium">
-            Scenario
-          </label>
-          <div className="relative inline-block">
-            <select
-              value={agentSetKey}
-              onChange={handleAgentChange}
-              className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
-            >
-              {Object.keys(allAgentSets).map((agentKey) => (
-                <option key={agentKey} value={agentKey}>
-                  {agentKey}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-600">
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 10.44l3.71-3.21a.75.75 0 111.04 1.08l-4.25 3.65a.75.75 0 01-1.04 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
+          <div className="text-sm text-gray-600">
+            Random Roleplay Language Practice
           </div>
 
-          {agentSetKey && (
+
+
             <div className="flex items-center ml-6">
               <label className="flex items-center text-base gap-1 mr-2 font-medium">
                 Agent
               </label>
               <div className="relative inline-block">
                 <select
-                  value={selectedAgentName}
-                  onChange={handleSelectedAgentChange}
+
+
                   className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
                 >
-                  {selectedAgentConfigSet?.map((agent) => (
-                    <option key={agent.name} value={agent.name}>
-                      {agent.name}
-                    </option>
-                  ))}
+
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-600">
                   <svg
@@ -588,20 +507,14 @@ function App() {
 
           {agentSetKey === 'languagePractice' && (
             <div className="flex items-center ml-6">
-              <label className="flex items-center text-base gap-1 mr-2 font-medium">
-                Role
-              </label>
+
               <div className="relative inline-block">
                 <select
-                  value={selectedRole}
-                  onChange={handleRoleChange}
+
+
                   className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
                 >
-                  {Object.entries(roleDescriptions).map(([key, role]) => (
-                    <option key={key} value={key}>
-                      {role.title}
-                    </option>
-                  ))}
+
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-600">
                   <svg
@@ -624,47 +537,98 @@ function App() {
 
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
         <div className="flex flex-col flex-1 gap-2">
-          {agentSetKey === 'languagePractice' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-2">
-              <h3 className="font-semibold text-blue-900 mb-2">
-                {roleDescriptions[selectedRole as keyof typeof roleDescriptions]?.title}
-              </h3>
-              <p className="text-blue-800 text-sm mb-2">
-                <strong>Your role:</strong> {roleDescriptions[selectedRole as keyof typeof roleDescriptions]?.userRole}
-              </p>
-              <p className="text-blue-800 text-sm mb-2">
-                <strong>AI Agent role:</strong> {roleDescriptions[selectedRole as keyof typeof roleDescriptions]?.agentRole}
-              </p>
-              {selectedRole === 'randomRoleplay' && randomScenario ? (
-                <>
-                  <p className="text-blue-800 text-sm mb-2">
-                    <strong>Random Scenario:</strong> {randomScenario.scenario}
-                  </p>
-                  <p className="text-blue-800 text-sm mb-2">
-                    <strong>Your Goal:</strong> {randomScenario.userGoal}
-                  </p>
-                  <div className="mt-3 p-3 bg-blue-100 rounded-lg">
-                    <p className="text-blue-900 text-sm font-semibold mb-2">💡 Tips for Success:</p>
-                    <ul className="text-blue-800 text-sm space-y-1">
-                      {randomScenario.tips.map((tip: string, index: number) => (
-                        <li key={index}>• {tip}</li>
-                      ))}
-                    </ul>
-                  </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-2">
+            <h3 className="font-semibold text-blue-900 mb-2">
+              🎭 Random Roleplay Language Practice
+            </h3>
+            
+            {/* Custom Scenario Input */}
+            <div className="mb-4">
+              <label className="block text-blue-900 text-sm font-medium mb-2">
+                💡 Optional: Describe your own scenario
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customScenario}
+                  onChange={(e) => setCustomScenario(e.target.value)}
+                  placeholder="e.g., 'I want to convince my boss to give me a raise'"
+                  className="flex-1 px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={() => {
+                    if (customScenario.trim()) {
+                      setRandomScenario({
+                        type: 'custom',
+                        scenario: customScenario.trim(),
+                        userGoal: `Convince the AI agent to agree to your request: ${customScenario.trim()}`,
+                        tips: [
+                          "Use logical arguments and evidence",
+                          "Address their concerns directly",
+                          "Show empathy for their perspective",
+                          "Be persistent but respectful"
+                        ]
+                      });
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Use This Scenario
+                </button>
+              </div>
+            </div>
+
+            {/* Current Scenario Display */}
+            {randomScenario ? (
+              <>
+                <p className="text-blue-800 text-sm mb-2">
+                  <strong>Current Scenario:</strong> {randomScenario.scenario}
+                </p>
+                <p className="text-blue-800 text-sm mb-2">
+                  <strong>Your Goal:</strong> {randomScenario.userGoal}
+                </p>
+                <div className="mt-3 p-3 bg-blue-100 rounded-lg">
+                  <p className="text-blue-900 text-sm font-semibold mb-2">💡 Tips for Success:</p>
+                  <ul className="text-blue-800 text-sm space-y-1">
+                    {randomScenario.tips.map((tip: string, index: number) => (
+                      <li key={index}>• {tip}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex gap-2 mt-3">
                   <button
                     onClick={generateRandomScenario}
-                    className="mt-3 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                    className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
                   >
-                    🎲 Generate New Scenario
+                    🎲 Generate Random Scenario
                   </button>
-                </>
-              ) : (
-                <p className="text-blue-800 text-sm">
-                  <strong>Scenario:</strong> {roleDescriptions[selectedRole as keyof typeof roleDescriptions]?.scenario}
+                  {customScenario.trim() && (
+                    <button
+                      onClick={() => {
+                        setCustomScenario("");
+                        setRandomScenario(null);
+                      }}
+                      className="px-3 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+                    >
+                      Clear Custom Scenario
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-blue-800 text-sm mb-3">
+                  Click "Generate Random Scenario" to start, or describe your own scenario above.
                 </p>
-              )}
-            </div>
-          )}
+                <button
+                  onClick={generateRandomScenario}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  🎲 Generate Random Scenario
+                </button>
+              </div>
+            )}
+          </div>
           
           <Transcript
             userText={userText}
