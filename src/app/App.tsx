@@ -26,7 +26,7 @@ import { languagePracticeScenario } from "@/app/agentConfigs/languagePractice";
 import { languagePracticeCompanyName } from "@/app/agentConfigs/languagePractice";
 
 // Map used by connect logic for scenarios defined via the SDK.
-const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
+const defaultSdkScenarioMap: Record<string, RealtimeAgent[]> = {
   languagePractice: languagePracticeScenario,
 };
 
@@ -94,6 +94,7 @@ function App() {
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
 
+  const [sdkScenarioMap, setSdkScenarioMap] = useState(defaultSdkScenarioMap);
 
   const [userText, setUserText] = useState<string>("");
   const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
@@ -150,6 +151,14 @@ function App() {
     }
   }, []);
 
+  // Update agent when scenario changes
+  useEffect(() => {
+    if (randomScenario && randomScenario.scenario) {
+      console.log('Scenario changed, updating agent:', randomScenario.scenario);
+      updateAgentScenario(randomScenario.scenario);
+    }
+  }, [randomScenario]);
+
   useEffect(() => {
     if (sessionStatus === "CONNECTED") {
       addTranscriptBreadcrumb(`Agent: Random Roleplay`, undefined);
@@ -181,7 +190,12 @@ function App() {
 
   const connectToRealtime = async () => {
     const agentSetKey = searchParams.get("agentConfig") || "default";
-    if (sdkScenarioMap[agentSetKey]) {
+    
+    // Get the current scenario map from state
+    const currentScenarioMap = sdkScenarioMap;
+    console.log('Connecting with scenario map:', currentScenarioMap);
+    
+    if (currentScenarioMap[agentSetKey]) {
       if (sessionStatus !== "DISCONNECTED") return;
       setSessionStatus("CONNECTING");
 
@@ -189,8 +203,9 @@ function App() {
         const EPHEMERAL_KEY = await fetchEphemeralKey();
         if (!EPHEMERAL_KEY) return;
 
-        // Use the language practice agents directly
-        const agents = sdkScenarioMap[agentSetKey];
+        // Use the current agents from the scenario map
+        const agents = currentScenarioMap[agentSetKey];
+        console.log('Connecting with agents:', agents);
 
         const companyName = languagePracticeCompanyName;
         const guardrail = createModerationGuardrail(companyName);
@@ -364,20 +379,42 @@ function App() {
 
   // Update the agent's scenario instructions
   const updateAgentScenario = async (scenario: string) => {
-    // Update the agent configuration with the new scenario
-    const { createRandomRoleplayAgent } = await import('./agentConfigs/languagePractice/randomRoleplay');
-    const newAgent = createRandomRoleplayAgent(scenario);
+    console.log('Updating agent scenario to:', scenario); // Debug log
     
-    // Update the scenario map with the new agent
-    sdkScenarioMap['languagePractice'] = [newAgent];
-    
-    if (sessionStatus === "CONNECTED") {
-      // Disconnect and reconnect to update the agent with new scenario
-      disconnectFromRealtime();
-      // Small delay to ensure clean disconnection
-      setTimeout(() => {
-        connectToRealtime();
-      }, 100);
+    try {
+      // Update the agent configuration with the new scenario
+      const { createRandomRoleplayAgent } = await import('./agentConfigs/languagePractice/randomRoleplay');
+      const newAgent = createRandomRoleplayAgent(scenario);
+      
+      console.log('Created new agent with scenario:', scenario);
+      console.log('New agent created successfully');
+      
+      // Update the scenario map with the new agent
+      setSdkScenarioMap(prev => {
+        const newMap = {
+          ...prev,
+          languagePractice: [newAgent]
+        };
+        console.log('Updated scenario map:', newMap);
+        return newMap;
+      });
+      
+      // If already connected, refresh the connection to use the new agent
+      if (sessionStatus === "CONNECTED") {
+        console.log('Disconnecting to refresh agent with new scenario...'); // Debug log
+        // Disconnect and reconnect to update the agent with new scenario
+        disconnectFromRealtime();
+        // Small delay to ensure clean disconnection
+        setTimeout(() => {
+          console.log('Reconnecting with new agent...'); // Debug log
+          // Force a fresh connection with the new agent
+          window.location.reload();
+        }, 100);
+      } else {
+        console.log('Not connected yet, new agent will be used on next connection');
+      }
+    } catch (error) {
+      console.error('Failed to update agent scenario:', error);
     }
   };
 
