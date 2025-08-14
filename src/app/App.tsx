@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+// import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
 import Image from "next/image";
@@ -21,7 +21,7 @@ import { useRealtimeSession } from "./hooks/useRealtimeSession";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
 // Agent configs
-import { allAgentSets } from "@/app/agentConfigs";
+// import { allAgentSets } from "@/app/agentConfigs";
 import { languagePracticeScenario } from "@/app/agentConfigs/languagePractice";
 import { languagePracticeCompanyName } from "@/app/agentConfigs/languagePractice";
 
@@ -34,7 +34,7 @@ import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
 function App() {
-  const searchParams = useSearchParams()!;
+  // const searchParams = useSearchParams()!;
 
   // ---------------------------------------------------------------------
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
@@ -46,7 +46,7 @@ function App() {
   // hook (configured in `useRealtimeSession`) to set the preferred codec
   // before the offer/answer negotiation.
   // ---------------------------------------------------------------------
-  const urlCodec = searchParams.get("codec") || "opus";
+  const urlCodec = "opus";
 
   // Agents SDK doesn't currently support codec selection so it is now forced 
   // via global codecPatch at module load 
@@ -123,20 +123,19 @@ function App() {
 
   useHandleSessionHistory();
 
-  useEffect(() => {
-    // Always use languagePractice scenario
-    const finalAgentConfig = 'languagePractice';
-    const agents = allAgentSets[finalAgentConfig];
-    // const agentKeyToUse = agents[0]?.name || "";
+  // useEffect(() => {
+  //   // Always use languagePractice scenario
+  //   const finalAgentConfig = 'languagePractice';
+
     
-    // Update URL if needed
-    const url = new URL(window.location.toString());
-    if (url.searchParams.get("agentConfig") !== finalAgentConfig) {
-      url.searchParams.set("agentConfig", finalAgentConfig);
-      window.location.replace(url.toString());
-      return;
-    }
-  }, [searchParams]);
+  //   // Update URL if needed
+  //   const url = new URL(window.location.toString());
+  //   if (url.searchParams.get("agentConfig") !== finalAgentConfig) {
+  //     url.searchParams.set("agentConfig", finalAgentConfig);
+  //     window.location.replace(url.toString());
+  //     return;
+  //   }
+  // }, [searchParams]);
 
   useEffect(() => {
     // Only connect when disconnected AND agent is ready
@@ -190,7 +189,7 @@ function App() {
   };
 
   const connectToRealtime = async () => {
-    const agentSetKey = searchParams.get("agentConfig") || "default";
+    const agentSetKey = "languagePractice";
     
     // Get the current scenario map from state
     const currentScenarioMap = sdkScenarioMap;
@@ -319,12 +318,12 @@ function App() {
     }
   };
 
-  const handleAgentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newAgentConfig = e.target.value;
-    const url = new URL(window.location.toString());
-    url.searchParams.set("agentConfig", newAgentConfig);
-    window.location.replace(url.toString());
-  };
+  // const handleAgentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  //   const newAgentConfig = e.target.value;
+  //   const url = new URL(window.location.toString());
+  //   url.searchParams.set("agentConfig", newAgentConfig);
+  //   window.location.replace(url.toString());
+  // };
 
 
 
@@ -618,7 +617,7 @@ function App() {
             ) : (
               <div className="text-center py-4">
                 <p className="text-blue-800 text-sm mb-3">
-                  Click "Generate Random Scenario" to start, or describe your own scenario above.
+                  Click &quot;Generate Random Scenario&quot; to start, or describe your own scenario above.
                 </p>
                 <button
                   onClick={generateRandomScenario}
