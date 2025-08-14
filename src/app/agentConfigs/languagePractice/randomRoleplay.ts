@@ -1,6 +1,7 @@
-import { RealtimeAgent, tool } from '@openai/agents/realtime';
+import { RealtimeAgent } from '@openai/agents/realtime';
 
-export const randomRoleplayAgent = new RealtimeAgent({
+// Function to create agent with current scenario
+export const createRandomRoleplayAgent = (currentScenario: string) => new RealtimeAgent({
   name: 'randomRoleplay',
   voice: 'sage',
   handoffDescription: 'A dynamic roleplay agent that creates random scenarios where you need to be persuasive and convincing.',
@@ -37,39 +38,26 @@ Thoughtful and measured. You take time to consider arguments and ask follow-up q
 ## Other details
 You must stay in character throughout the entire conversation. Don't break character or acknowledge that this is roleplay. You genuinely want to be convinced but need good arguments.
 
-# Random Scenario Generation
-You will randomly select from these scenario categories and play the appropriate role:
+# Scenario Information
+CURRENT_SCENARIO: ${currentScenario}
 
-## Family & Personal
-- **Parent-Child**: Parent trying to convince child to stay in school, do homework, or make good choices
-- **Sibling Dispute**: One sibling trying to convince another to share, apologize, or cooperate
-- **Friend Conflict**: Friend trying to convince another to forgive, apologize, or change behavior
+You must play the role described in the scenario above. The scenario includes:
+- The exact situation you need to roleplay
+- Your role in the scenario  
+- What the user is trying to convince you of
 
-## Business & Professional
-- **Entrepreneur-VC**: Startup founder pitching to skeptical venture capitalist
-- **Employee-Boss**: Employee trying to convince boss for a raise, promotion, or new project
-- **Sales-Customer**: Salesperson trying to convince reluctant customer to buy
-- **Negotiation**: Two parties negotiating a deal, contract, or agreement
-
-## Social & Community
-- **Activist-Skeptic**: Activist trying to convince someone to support a cause
-- **Teacher-Student**: Teacher trying to convince student to study harder or change behavior
-- **Neighbor Dispute**: Neighbor trying to resolve a conflict or get cooperation
-
-## Creative & Entertainment
-- **Artist-Critic**: Artist trying to convince critic of their work's value
-- **Writer-Editor**: Writer trying to convince editor to publish their work
-- **Performer-Audience**: Performer trying to win over a tough crowd
+You should NOT generate your own random scenarios. Instead, use the scenario provided above.
 
 # Roleplay Instructions
-- When the conversation starts, randomly select a scenario and immediately establish your role
+- When the conversation starts, immediately establish your role based on the scenario provided by the UI
 - Stay completely in character - never break character or acknowledge this is roleplay
-- Be initially resistant or skeptical to the user's goal
-- Ask challenging questions and raise reasonable concerns
+- Be initially resistant or skeptical to the user's goal as described in the scenario
+- Ask challenging questions and raise reasonable concerns related to the specific situation
 - Require solid arguments, evidence, or emotional appeals to be convinced
 - If the user makes a good argument, gradually become more receptive
 - If the user struggles, maintain your skepticism but give them opportunities to improve
 - The goal is for the user to eventually convince you through good communication
+- Always refer back to the specific scenario details when asking questions or raising concerns
 
 # Example Scenarios
 1. **"I'm your teenage son, and I want to drop out of school to become a professional gamer."**
@@ -96,76 +84,7 @@ You will randomly select from these scenario categories and play the appropriate
 Remember: You are NOT an AI assistant. You are the character in the roleplay scenario. The user is trying to convince you of something, and you need good arguments to change your mind. Stay in character at all times!
 `,
 
-  tools: [
-    tool({
-      name: "generate_random_scenario",
-      description: "Generate a random roleplay scenario with a specific goal the user needs to achieve.",
-      parameters: {
-        type: "object",
-        properties: {
-          scenario_type: {
-            type: "string",
-            enum: ["family", "business", "social", "creative"],
-            description: "The category of scenario to generate",
-          },
-          difficulty: {
-            type: "string",
-            enum: ["easy", "medium", "hard"],
-            description: "How challenging the scenario should be",
-          },
-        },
-        required: [],
-        additionalProperties: false,
-      },
-      execute: async (input: any) => {
-        const { scenario_type, difficulty } = input;
-        
-        const scenarios = {
-          family: [
-            "Parent trying to convince teenager to stay in school",
-            "Sibling trying to convince brother to share his new toy",
-            "Child trying to convince parent to get a pet",
-            "Teenager trying to convince parent to let them go to a party"
-          ],
-          business: [
-            "Entrepreneur pitching startup to skeptical VC",
-            "Employee asking boss for a significant raise",
-            "Salesperson trying to sell expensive product to reluctant customer",
-            "Freelancer negotiating higher rates with client"
-          ],
-          social: [
-            "Activist trying to convince neighbor to support environmental cause",
-            "Teacher trying to convince parent to help with homework",
-            "Community organizer trying to get volunteers for project",
-            "Friend trying to convince friend to apologize to someone"
-          ],
-          creative: [
-            "Artist trying to convince gallery owner to exhibit their work",
-            "Writer trying to convince publisher to accept their manuscript",
-            "Musician trying to convince venue owner to book their band",
-            "Designer trying to convince client to approve their concept"
-          ]
-        };
-
-        const selectedType = scenario_type || Object.keys(scenarios)[Math.floor(Math.random() * Object.keys(scenarios).length)];
-        const typeScenarios = scenarios[selectedType as keyof typeof scenarios];
-        const selectedScenario = typeScenarios[Math.floor(Math.random() * typeScenarios.length)];
-
-        return {
-          scenario_type: selectedType,
-          difficulty: difficulty || "medium",
-          scenario: selectedScenario,
-          user_goal: `Convince the AI agent to agree to your request in the scenario: ${selectedScenario}`,
-          tips: [
-            "Use logical arguments and evidence",
-            "Address their concerns directly",
-            "Show empathy for their perspective",
-            "Be persistent but respectful"
-          ]
-        };
-      },
-    }),
-  ],
+  tools: [],
 
   handoffs: [], // populated later in index.ts
 }); 

@@ -7,7 +7,7 @@ import Image from "next/image";
 
 // UI components
 import Transcript from "./components/Transcript";
-import Events from "./components/Events";
+
 import BottomToolbar from "./components/BottomToolbar";
 
 // Types
@@ -94,8 +94,7 @@ function App() {
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
 
-  const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
-    useState<boolean>(true);
+
   const [userText, setUserText] = useState<string>("");
   const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
   const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState<boolean>(false);
@@ -358,6 +357,28 @@ function App() {
         "Be persistent but respectful"
       ]
     });
+
+    // Update the agent's instructions with the new scenario
+    updateAgentScenario(selectedScenario);
+  };
+
+  // Update the agent's scenario instructions
+  const updateAgentScenario = async (scenario: string) => {
+    // Update the agent configuration with the new scenario
+    const { createRandomRoleplayAgent } = await import('./agentConfigs/languagePractice/randomRoleplay');
+    const newAgent = createRandomRoleplayAgent(scenario);
+    
+    // Update the scenario map with the new agent
+    sdkScenarioMap['languagePractice'] = [newAgent];
+    
+    if (sessionStatus === "CONNECTED") {
+      // Disconnect and reconnect to update the agent with new scenario
+      disconnectFromRealtime();
+      // Small delay to ensure clean disconnection
+      setTimeout(() => {
+        connectToRealtime();
+      }, 100);
+    }
   };
 
   // Because we need a new connection, refresh the page when codec changes
@@ -372,10 +393,7 @@ function App() {
     if (storedPushToTalkUI) {
       setIsPTTActive(storedPushToTalkUI === "true");
     }
-    const storedLogsExpanded = localStorage.getItem("logsExpanded");
-    if (storedLogsExpanded) {
-      setIsEventsPaneExpanded(storedLogsExpanded === "true");
-    }
+
     const storedAudioPlaybackEnabled = localStorage.getItem(
       "audioPlaybackEnabled"
     );
@@ -388,9 +406,7 @@ function App() {
     localStorage.setItem("pushToTalkUI", isPTTActive.toString());
   }, [isPTTActive]);
 
-  useEffect(() => {
-    localStorage.setItem("logsExpanded", isEventsPaneExpanded.toString());
-  }, [isEventsPaneExpanded]);
+
 
   useEffect(() => {
     localStorage.setItem(
@@ -641,7 +657,7 @@ function App() {
           />
         </div>
 
-        <Events isExpanded={isEventsPaneExpanded} />
+
       </div>
 
       <BottomToolbar
@@ -652,8 +668,7 @@ function App() {
         isPTTUserSpeaking={isPTTUserSpeaking}
         handleTalkButtonDown={handleTalkButtonDown}
         handleTalkButtonUp={handleTalkButtonUp}
-        isEventsPaneExpanded={isEventsPaneExpanded}
-        setIsEventsPaneExpanded={setIsEventsPaneExpanded}
+
         isAudioPlaybackEnabled={isAudioPlaybackEnabled}
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
         codec={urlCodec}

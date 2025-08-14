@@ -1,7 +1,10 @@
-import { randomRoleplayAgent } from './randomRoleplay';
+import { createRandomRoleplayAgent } from './randomRoleplay';
+
+// Default agent for initial connection
+export const defaultRandomRoleplayAgent = createRandomRoleplayAgent("No scenario selected yet");
 
 export const languagePracticeScenario = [
-  randomRoleplayAgent,
+  defaultRandomRoleplayAgent,
 ];
 
 // Name of the company represented by this agent set. Used by guardrails
