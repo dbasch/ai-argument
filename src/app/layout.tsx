@@ -3,8 +3,8 @@ import "./globals.css";
 import "./lib/envSetup";
 
 export const metadata: Metadata = {
-  title: "Realtime API Agents",
-  description: "A demo app from OpenAI.",
+  title: "Argue against an agent",
+  description: "Try to convince an agent of something, in your language of choice.",
 };
 
 export default function RootLayout({

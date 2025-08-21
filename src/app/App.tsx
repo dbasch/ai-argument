@@ -60,6 +60,30 @@ function App() {
   const [randomScenario, setRandomScenario] = useState<any>(null);
   const [customScenario, setCustomScenario] = useState<string>("");
 
+  // Initialize custom scenario from localStorage after client-side hydration
+  useEffect(() => {
+    setIsClient(true);
+    const stored = localStorage.getItem('selectedLanguage');
+    if (stored) {
+      setSelectedLanguage(stored);
+    }
+    
+    // Also restore custom scenario if it exists
+    const storedCustomScenario = localStorage.getItem('customScenario');
+    if (storedCustomScenario) {
+      setCustomScenario(storedCustomScenario);
+      // If we have a stored custom scenario, restore the randomScenario state too
+      const storedRandomScenario = localStorage.getItem('randomScenario');
+      if (storedRandomScenario) {
+        try {
+          setRandomScenario(JSON.parse(storedRandomScenario));
+        } catch (e) {
+          console.error('Failed to parse stored random scenario:', e);
+        }
+      }
+    }
+  }, []);
+
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
   // const handoffTriggeredRef = useRef(false);
@@ -112,15 +136,6 @@ function App() {
   const [selectedLanguage, setSelectedLanguage] = useState<string>('French');
   const [isClient, setIsClient] = useState(false);
 
-  // Initialize language from localStorage after client-side hydration
-  useEffect(() => {
-    setIsClient(true);
-    const stored = localStorage.getItem('selectedLanguage');
-    if (stored) {
-      setSelectedLanguage(stored);
-    }
-  }, []);
-
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
     useAudioDownload();
@@ -158,8 +173,8 @@ function App() {
   }, [sessionStatus, agentReady]);
 
   useEffect(() => {
-    // Generate random scenario on first load
-    if (!randomScenario) {
+    // Only generate random scenario on first load if no custom scenario is set
+    if (!randomScenario && !customScenario.trim()) {
       generateRandomScenario();
     }
   }, []);
@@ -341,6 +356,10 @@ function App() {
 
 
   const generateRandomScenario = () => {
+    // Clear any existing custom scenario
+    setCustomScenario("");
+    localStorage.removeItem('customScenario');
+    
     const scenarioTypes = ['family', 'business', 'social', 'creative'];
     const randomType = scenarioTypes[Math.floor(Math.random() * scenarioTypes.length)];
     
@@ -374,7 +393,7 @@ function App() {
     const typeScenarios = scenarios[randomType as keyof typeof scenarios];
     const selectedScenario = typeScenarios[Math.floor(Math.random() * typeScenarios.length)];
     
-    setRandomScenario({
+    const newRandomScenario = {
       type: randomType,
       scenario: selectedScenario,
       userGoal: `Convince the AI agent to agree to your request in the scenario: ${selectedScenario}`,
@@ -384,7 +403,12 @@ function App() {
         "Show empathy for their perspective",
         "Be persistent but respectful"
       ]
-    });
+    };
+
+    setRandomScenario(newRandomScenario);
+    
+    // Store the random scenario in localStorage
+    localStorage.setItem('randomScenario', JSON.stringify(newRandomScenario));
 
     // Update the agent's instructions with the new scenario
     updateAgentScenario(selectedScenario);
@@ -425,7 +449,7 @@ function App() {
         setTimeout(() => {
           console.log('Reconnecting with new agent...'); // Debug log
           // Force a fresh connection with the new agent
-          window.location.reload();
+          connectToRealtime();
         }, 100);
       } else {
         console.log('Not connected yet, new agent will be used on next connection');
@@ -657,7 +681,7 @@ function App() {
                 <button
                   onClick={() => {
                     if (customScenario.trim()) {
-                      setRandomScenario({
+                      const newScenario = {
                         type: 'custom',
                         scenario: customScenario.trim(),
                         userGoal: `Convince the AI agent to agree to your request: ${customScenario.trim()}`,
@@ -667,7 +691,13 @@ function App() {
                           "Show empathy for their perspective",
                           "Be persistent but respectful"
                         ]
-                      });
+                      };
+                      
+                      setRandomScenario(newScenario);
+                      
+                      // Store in localStorage for persistence
+                      localStorage.setItem('customScenario', customScenario.trim());
+                      localStorage.setItem('randomScenario', JSON.stringify(newScenario));
                       
                       // Add this line to update the agent with the custom scenario
                       updateAgentScenario(customScenario.trim());
@@ -712,6 +742,8 @@ function App() {
                       onClick={() => {
                         setCustomScenario("");
                         setRandomScenario(null);
+                        localStorage.removeItem('customScenario');
+                        localStorage.removeItem('randomScenario');
                       }}
                       className="px-3 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
                     >
