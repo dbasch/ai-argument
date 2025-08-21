@@ -360,41 +360,55 @@ function App() {
     setCustomScenario("");
     localStorage.removeItem('customScenario');
     
-    const scenarioTypes = ['family', 'business', 'social', 'creative'];
-    const randomType = scenarioTypes[Math.floor(Math.random() * scenarioTypes.length)];
-    
-    const scenarios = {
-      family: [
-        "Parent trying to convince teenager to stay in school",
-        "Sibling trying to convince brother to share his new toy",
-        "Child trying to convince parent to get a pet",
-        "Teenager trying to convince parent to let them go to a party"
-      ],
-      business: [
-        "Entrepreneur pitching startup to skeptical VC",
-        "Employee asking boss for a significant raise",
-        "Salesperson trying to sell expensive product to reluctant customer",
-        "Freelancer negotiating higher rates with client"
-      ],
-      social: [
-        "Activist trying to convince neighbor to support environmental cause",
-        "Teacher trying to convince parent to help with homework",
-        "Community organizer trying to get volunteers for project",
-        "Friend trying to convince friend to apologize to someone"
-      ],
-      creative: [
-        "Artist trying to convince gallery owner to exhibit their work",
-        "Writer trying to convince publisher to accept their manuscript",
-        "Musician trying to convince venue owner to book their band",
-        "Designer trying to convince client to approve their concept"
-      ]
+    // Generate truly random scenarios with more variety but keep them realistic
+    const generateRandomScenarioText = () => {
+      const roles = [
+        'teenager', 'college student', 'employee', 'entrepreneur', 'parent', 'neighbor',
+        'customer', 'client', 'student', 'volunteer', 'community member', 'friend',
+        'colleague', 'team member', 'committee member', 'board member', 'club member',
+        'association member', 'group leader', 'project manager', 'event organizer',
+        'fundraiser', 'advocate', 'representative', 'spokesperson', 'delegate'
+      ];
+      
+      const goals = [
+        'approve my proposal', 'fund my project', 'support my initiative', 'join my cause',
+        'help with my request', 'agree to my suggestion', 'back my idea', 'endorse my plan',
+        'participate in my event', 'contribute to my campaign', 'sponsor my activity',
+        'recommend my service', 'refer my business', 'introduce me to someone',
+        'give me permission', 'grant me access', 'provide me resources', 'share your expertise',
+        'collaborate with me', 'partner with me', 'invest in my venture', 'hire my company',
+        'purchase my product', 'use my service', 'attend my workshop', 'review my work'
+      ];
+      
+      const contexts = [
+        'at work', 'in our community', 'for our organization', 'in our neighborhood',
+        'at our school', 'in our company', 'for our team', 'in our department',
+        'at our event', 'in our meeting', 'for our project', 'in our group',
+        'at our facility', 'in our building', 'for our cause', 'in our area',
+        'at our location', 'in our space', 'for our benefit', 'in our interest',
+        'at our venue', 'in our setting', 'for our purpose', 'in our context'
+      ];
+      
+      const randomRole = roles[Math.floor(Math.random() * roles.length)];
+      const randomGoal = goals[Math.floor(Math.random() * goals.length)];
+      const randomContext = contexts[Math.floor(Math.random() * contexts.length)];
+      
+      // Create a unique scenario by combining random elements
+      const scenarioVariations = [
+        `I'm a ${randomRole} trying to convince you, a ${roles[Math.floor(Math.random() * roles.length)]}, to ${randomGoal} ${randomContext}.`,
+        `As a ${randomRole}, I need you, a ${roles[Math.floor(Math.random() * roles.length)]}, to help me ${randomGoal} ${randomContext}.`,
+        `I'm a ${randomRole} who wants to ${randomGoal} ${randomContext}, and I need to convince you, a ${roles[Math.floor(Math.random() * roles.length)]}, to agree.`,
+        `Being a ${randomRole}, I'm asking you, a ${roles[Math.floor(Math.random() * roles.length)]}, to let me ${randomGoal} ${randomContext}.`,
+        `I'm a ${randomRole} seeking permission from you, a ${roles[Math.floor(Math.random() * roles.length)]}, to ${randomGoal} ${randomContext}.`
+      ];
+      
+      return scenarioVariations[Math.floor(Math.random() * scenarioVariations.length)];
     };
     
-    const typeScenarios = scenarios[randomType as keyof typeof scenarios];
-    const selectedScenario = typeScenarios[Math.floor(Math.random() * typeScenarios.length)];
+    const selectedScenario = generateRandomScenarioText();
     
     const newRandomScenario = {
-      type: randomType,
+      type: 'creative',
       scenario: selectedScenario,
       userGoal: `Convince the AI agent to agree to your request in the scenario: ${selectedScenario}`,
       tips: [
