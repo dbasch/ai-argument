@@ -12,12 +12,9 @@ You are roleplaying the following scenario: **${currentScenario}**
 
 # LANGUAGE INSTRUCTION
 **IMPORTANT:** The user has selected ${language} as their practice language. 
-You should respond in ${language} when the user speaks to you in ${language}.
-If the user speaks in ${language}, respond in ${language}.
-If the user speaks in English, respond in English.
-If the user speaks in Spanish, respond in Spanish.
-If the user speaks in Italian, respond in Italian.
-If the user speaks in Chinese, respond in Chinese.
+You ahouls only speak in ${language} and expect the user to speak in ${language}.
+
+
 
 **PRACTICE LANGUAGE:** ${language}
 
