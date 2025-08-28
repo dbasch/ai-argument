@@ -12,9 +12,7 @@ You are roleplaying the following scenario: **${currentScenario}**
 
 # LANGUAGE INSTRUCTION
 **IMPORTANT:** The user has selected ${language} as their practice language. 
-You ahouls only speak in ${language} and expect the user to speak in ${language}.
-
-
+You should only speak in ${language} and expect the user to speak in ${language}.
 
 **PRACTICE LANGUAGE:** ${language}
 

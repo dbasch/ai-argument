@@ -63,10 +63,6 @@ function App() {
   // Initialize custom scenario from localStorage after client-side hydration
   useEffect(() => {
     setIsClient(true);
-    const stored = localStorage.getItem('selectedLanguage');
-    if (stored) {
-      setSelectedLanguage(stored);
-    }
     
     // Also restore custom scenario if it exists
     const storedCustomScenario = localStorage.getItem('customScenario');
@@ -133,12 +129,45 @@ function App() {
   );
 
   // Language selector state
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('French');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selectedLanguage') || 'French';
+    }
+    return 'French';
+  });
   const [isClient, setIsClient] = useState(false);
 
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
     useAudioDownload();
+
+  // Update agent language when selectedLanguage changes or on initial load
+  useEffect(() => {
+    if (isClient) {
+      const updateAgentLanguage = async () => {
+        try {
+          const { createRandomRoleplayAgent } = await import('./agentConfigs/languagePractice/randomRoleplay');
+          
+          // Use the current scenario if it exists, otherwise use the placeholder
+          const currentScenario = randomScenario?.scenario || "Waiting for scenario to be generated...";
+          const newAgent = createRandomRoleplayAgent(currentScenario, selectedLanguage);
+          
+          setSdkScenarioMap(prev => ({
+            ...prev,
+            languagePractice: [newAgent]
+          }));
+          
+          setAgentReady(true);
+        } catch (error) {
+          console.error('Failed to update agent language:', error);
+        }
+      };
+      
+      updateAgentLanguage();
+    }
+  }, [isClient, selectedLanguage, randomScenario]);
+
+
 
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
     try {
